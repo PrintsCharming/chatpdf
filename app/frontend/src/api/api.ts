@@ -34,6 +34,7 @@ export async function askApi(options: AskRequest, indexNs: string, indexType: st
                         exclude_category: options.overrides?.excludeCategory,
                         chainType: options.overrides?.chainType,
                         tokenLength: options.overrides?.tokenLength,
+                        embeddingModelType: options.overrides?.embeddingModelType,
                     }
                   }
                 }
@@ -78,6 +79,7 @@ export async function askAgentApi(options: AskRequest): Promise<AskResponse> {
                       exclude_category: options.overrides?.excludeCategory,
                       chainType: options.overrides?.chainType,
                       tokenLength: options.overrides?.tokenLength,
+                      embeddingModelType: options.overrides?.embeddingModelType,
                   }
                 }
               }
@@ -122,6 +124,7 @@ export async function askTaskAgentApi(options: AskRequest): Promise<AskResponse>
                       exclude_category: options.overrides?.excludeCategory,
                       chainType: options.overrides?.chainType,
                       tokenLength: options.overrides?.tokenLength,
+                      embeddingModelType: options.overrides?.embeddingModelType,
                   }
                 }
               }
@@ -154,12 +157,6 @@ export async function chatGptApi(options: ChatRequest, indexNs: string, indexTyp
                 data: {
                   history: options.history,
                   approach: 'rrr',
-                  // overrides: {
-                  //   semantic_ranker: true,
-                  //   semantic_captions: false,
-                  //   top: 3,
-                  //   suggest_followup_questions: false
-                  // }
                   overrides: {
                     semantic_ranker: options.overrides?.semanticRanker,
                     semantic_captions: options.overrides?.semanticCaptions,
@@ -168,7 +165,8 @@ export async function chatGptApi(options: ChatRequest, indexNs: string, indexTyp
                     prompt_template: options.overrides?.promptTemplate,
                     prompt_template_prefix: options.overrides?.promptTemplatePrefix,
                     prompt_template_suffix: options.overrides?.promptTemplateSuffix,
-                    suggest_followup_questions: options.overrides?.suggestFollowupQuestions
+                    suggest_followup_questions: options.overrides?.suggestFollowupQuestions,
+                    embeddingModelType: options.overrides?.embeddingModelType,
                   }
                 }
               }
@@ -200,12 +198,6 @@ export async function chatGpt3Api(question: string, options: ChatRequest, indexN
               data: {
                 history: options.history,
                 approach: 'rrr',
-                // overrides: {
-                //   semantic_ranker: true,
-                //   semantic_captions: false,
-                //   top: 3,
-                //   suggest_followup_questions: false
-                // }
                 overrides: {
                   semantic_ranker: options.overrides?.semanticRanker,
                   semantic_captions: options.overrides?.semanticCaptions,
@@ -214,7 +206,8 @@ export async function chatGpt3Api(question: string, options: ChatRequest, indexN
                   prompt_template: options.overrides?.promptTemplate,
                   prompt_template_prefix: options.overrides?.promptTemplatePrefix,
                   prompt_template_suffix: options.overrides?.promptTemplateSuffix,
-                  suggest_followup_questions: options.overrides?.suggestFollowupQuestions
+                  suggest_followup_questions: options.overrides?.suggestFollowupQuestions,
+                  embeddingModelType: options.overrides?.embeddingModelType,
                 }
               }
             }
@@ -266,8 +259,7 @@ export async function uploadFile(fileName:string, fileContent:any, contentType:s
   }
   return "Success";
 }
-
-export async function uploadBinaryFile(formData:any) : Promise<string> {
+export async function uploadBinaryFile(formData:any, indexName:string) : Promise<string> {
   const response = await fetch('/uploadBinaryFile', {
     method: "POST",
     body: formData
@@ -282,7 +274,9 @@ export async function uploadBinaryFile(formData:any) : Promise<string> {
 
 export async function processDoc(indexType: string, loadType : string, multiple: string, indexName : string, files: any,
   blobConnectionString : string, blobContainer : string, blobPrefix : string, blobName : string,
-  s3Bucket : string, s3Key : string, s3AccessKey : string, s3SecretKey : string, s3Prefix : string) : Promise<string> {
+  s3Bucket : string, s3Key : string, s3AccessKey : string, s3SecretKey : string, s3Prefix : string,
+  existingIndex : string, existingIndexNs: string, embeddingModelType: string,
+  textSplitter:string) : Promise<string> {
   const response = await fetch('/processDoc', {
     method: "POST",
     headers: {
@@ -293,6 +287,10 @@ export async function processDoc(indexType: string, loadType : string, multiple:
       multiple: multiple,
       loadType:loadType,
       indexName:indexName,
+      existingIndex:existingIndex,
+      existingIndexNs:existingIndexNs,
+      embeddingModelType:embeddingModelType,
+      textSplitter:textSplitter,
       postBody: {
         values: [
           {
@@ -308,6 +306,48 @@ export async function processDoc(indexType: string, loadType : string, multiple:
               s3AccessKey : s3AccessKey,
               s3SecretKey : s3SecretKey,
               s3Prefix : s3Prefix
+            }
+          }
+        ]
+      }
+    })
+  });
+
+  const parsedResponse: ChatResponse = await response.json();
+  if (response.status > 299 || !response.ok) {
+      return "Error";
+  } else {
+    if (parsedResponse.values[0].data.error) {
+      return parsedResponse.values[0].data.error;
+    }
+    return 'Success';
+  }
+  // if (response.status > 299 || !response.ok) {
+  //   return "Error";
+  // }
+  
+  // return "Success";
+}
+
+export async function indexManagement(indexType:string, indexName:string, blobName:string, indexNs:string,
+  operation:string) : Promise<string> {
+  const response = await fetch('/indexManagement', {
+    method: "POST",
+    headers: {
+        "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      indexType:indexType,
+      blobName:blobName,
+      indexNs:indexNs,
+      indexName:indexName,
+      operation:operation,
+      postBody: {
+        values: [
+          {
+            recordId: 0,
+            data: {
+              text: ''
             }
           }
         ]
@@ -368,7 +408,8 @@ export async function chatJsApi(question: string, history: never[], indexNs: str
   // return followUpRes["text"]
 }
 
-export async function secSearch(indexType: string,  indexName: string, question:string, top: string): Promise<any> {
+export async function secSearch(indexType: string,  indexName: string, question:string, top: string, 
+  embeddingModelType:string): Promise<any> {
   const response = await fetch('/secsearch' , {
       method: "POST",
       headers: {
@@ -379,6 +420,7 @@ export async function secSearch(indexType: string,  indexName: string, question:
         indexName: indexName,
         question:question,
         top:top,
+        embeddingModelType:embeddingModelType,
         postBody: {
           values: [
             {
@@ -399,7 +441,7 @@ export async function secSearch(indexType: string,  indexName: string, question:
   return result;
 }
 
-export async function sqlChat(question:string, top: number): Promise<SqlResponse> {
+export async function sqlChat(question:string, top: number, embeddingModelType: string): Promise<SqlResponse> {
   const response = await fetch('/sqlChat' , {
       method: "POST",
       headers: {
@@ -408,6 +450,7 @@ export async function sqlChat(question:string, top: number): Promise<SqlResponse
       body: JSON.stringify({
         question:question,
         top:top,
+        embeddingModelType:embeddingModelType,
         postBody: {
           values: [
             {
@@ -427,7 +470,7 @@ export async function sqlChat(question:string, top: number): Promise<SqlResponse
   return parsedResponse.values[0].data
 }
 
-export async function sqlChain(question:string, top: number): Promise<SqlResponse> {
+export async function sqlChain(question:string, top: number, embeddingModelType:string): Promise<SqlResponse> {
     const response = await fetch('/sqlChain' , {
         method: "POST",
         headers: {
@@ -436,6 +479,7 @@ export async function sqlChain(question:string, top: number): Promise<SqlRespons
         body: JSON.stringify({
           question:question,
           top:top,
+          embeddingModelType:embeddingModelType,
           postBody: {
             values: [
               {
@@ -504,7 +548,8 @@ export async function getSpeechToken(): Promise<SpeechTokenResponse> {
   return parsedResponse
 }
 
-export async function summarizer(options: AskRequest, requestText: string, promptType:string, promptName: string, docType: string, chainType:string): Promise<string> {
+export async function summarizer(options: AskRequest, requestText: string, promptType:string, promptName: string, docType: string, 
+  chainType:string, embeddingModelType:string): Promise<string> {
   const response = await fetch('/summarizer' , {
       method: "POST",
       headers: {
@@ -523,7 +568,8 @@ export async function summarizer(options: AskRequest, requestText: string, promp
                 text: requestText,
                 overrides: {
                   temperature: options.overrides?.temperature,
-                  tokenLength: options.overrides?.tokenLength
+                  tokenLength: options.overrides?.tokenLength,
+                  embeddingModelType : embeddingModelType,
                 }
               }
             }

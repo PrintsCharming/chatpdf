@@ -137,6 +137,7 @@ def chat3():
 def sqlChat():
     question=request.json["question"]
     top=request.json["top"]
+    embeddingModelType = request.json["embeddingModelType"]
     postBody=request.json["postBody"]
 
     try:
@@ -144,7 +145,7 @@ def sqlChat():
         url = os.environ.get("SQLCHAT_URL")
 
         data = postBody
-        params = {'question': question, 'topK': top, }
+        params = {'question': question, 'topK': top, 'embeddingModelType': embeddingModelType}
         resp = requests.post(url, params=params, data=json.dumps(data), headers=headers)
         jsonDict = json.loads(resp.text)
         return jsonify(jsonDict)
@@ -156,6 +157,7 @@ def sqlChat():
 def sqlChain():
     question=request.json["question"]
     top=request.json["top"]
+    embeddingModelType=request.json["embeddingModelType"]
     postBody=request.json["postBody"]
 
     try:
@@ -163,7 +165,7 @@ def sqlChain():
         url = os.environ.get("SQLCHAIN_URL")
 
         data = postBody
-        params = {'question': question, 'topK': top, }
+        params = {'question': question, 'topK': top, 'embeddingModelType': embeddingModelType }
         resp = requests.post(url, params=params, data=json.dumps(data), headers=headers)
         jsonDict = json.loads(resp.text)
         return jsonify(jsonDict)
@@ -177,6 +179,10 @@ def processDoc():
     indexName=request.json["indexName"]
     multiple=request.json["multiple"]
     loadType=request.json["loadType"]
+    existingIndex=request.json["existingIndex"]
+    existingIndexNs=request.json["existingIndexNs"]
+    embeddingModelType=request.json["embeddingModelType"]
+    textSplitter=request.json["textSplitter"]
     postBody=request.json["postBody"]
    
     try:
@@ -184,7 +190,9 @@ def processDoc():
         url = os.environ.get("DOCGENERATOR_URL")
 
         data = postBody
-        params = {'indexType': indexType, "indexName": indexName, "multiple": multiple , "loadType": loadType}
+        params = {'indexType': indexType, "indexName": indexName, "multiple": multiple , "loadType": loadType,
+                  "existingIndex": existingIndex, "existingIndexNs": existingIndexNs, "embeddingModelType": embeddingModelType,
+                  "textSplitter": textSplitter}
         resp = requests.post(url, params=params, data=json.dumps(data), headers=headers)
         jsonDict = json.loads(resp.text)
         #return json.dumps(jsonDict)
@@ -244,6 +252,31 @@ def refreshIndex():
         logging.exception("Exception in /refreshIndex")
         return jsonify({"error": str(e)}), 500
 
+@app.route("/indexManagement", methods=["POST"])
+def indexManagement():
+   
+    try:
+        indexType=request.json["indexType"]
+        indexName=request.json["indexName"]
+        blobName=request.json["blobName"]
+        indexNs=request.json["indexNs"]
+        operation=request.json["operation"]    
+        postBody=request.json["postBody"]
+
+        headers = {'content-type': 'application/json'}
+        url = os.environ.get("INDEXMANAGEMENT_URL")
+
+        data = postBody
+        params = {'indexType': indexType, "indexName": indexName, "blobName": blobName , "indexNs": indexNs, "operation": operation}
+        resp = requests.post(url, params=params, data=json.dumps(data), headers=headers)
+        jsonDict = json.loads(resp.text)
+        #return json.dumps(jsonDict)
+        return jsonify(jsonDict)
+
+    except Exception as e:
+        logging.exception("Exception in /indexManagement")
+        return jsonify({"error": str(e)}), 500
+    
 @app.route("/uploadFile", methods=["POST"])
 def uploadFile():
    
@@ -283,7 +316,7 @@ def uploadBinaryFile():
         #blob_client.upload_blob(bytes_data,overwrite=True, content_settings=ContentSettings(content_type=content_type))
         blobClient.upload_blob(file.read(), overwrite=True)
         blobClient.set_blob_metadata(metadata={"embedded": "false", 
-                                        "indexName": blobName, 
+                                        "indexName": "",
                                         "namespace": "", 
                                         "qa": "No Qa Generated",
                                         "summary": "No Summary Created", 
@@ -297,7 +330,9 @@ def uploadBinaryFile():
 # Serve content files from blob storage from within the app to keep the example self-contained. 
 # *** NOTE *** this assumes that the content files are public, or at least that all users of the app
 # can access all the files. This is also slow and memory hungry.
-@app.route("/content/<path>")
+#@app.route("/content/<path>")
+@app.route('/content/', defaults={'path': '<path>'})
+@app.route('/content/<path:path>')
 def content_file(path):
     url = os.environ.get("BLOB_CONNECTION_STRING")
     containerName = os.environ.get("BLOB_CONTAINER_NAME")
@@ -317,6 +352,7 @@ def secsearch():
     indexName=request.json["indexName"]
     question=request.json["question"]
     top=request.json["top"]
+    embeddingModelType=request.json["embeddingModelType"]
     postBody=request.json["postBody"]
   
     try:
@@ -324,7 +360,7 @@ def secsearch():
         url = os.environ.get("SECSEARCH_URL")
 
         data = postBody
-        params = {'indexType': indexType, "indexName": indexName, "question": question, "top": top }
+        params = {'indexType': indexType, "indexName": indexName, "question": question, "top": top, "embeddingModelType": embeddingModelType }
         resp = requests.post(url, params=params, data=json.dumps(data), headers=headers)
         jsonDict = json.loads(resp.text)
         #return json.dumps(jsonDict)
