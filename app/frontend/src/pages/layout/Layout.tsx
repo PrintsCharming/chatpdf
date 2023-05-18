@@ -35,7 +35,7 @@ const Layout = () => {
         <div className={styles.layout}>
             <header className={styles.header} role={"banner"}>
                 <div className={styles.headerContainer}>
-                    <Link to="https://rcschatapp.azurewebsites.net/" target={"_blank"} className={styles.headerTitleContainer}>
+                    <Link to="https://rschatapp.azurewebsites.net/" target={"_blank"} className={styles.headerTitleContainer}>
                         <h3 className={styles.headerTitle}>Chat and Ask</h3>
                     </Link>
                     <nav>
@@ -65,11 +65,6 @@ const Layout = () => {
                             <li className={styles.headerNavLeftMargin}>
                                 <NavLink to="/qa" className={({ isActive }) => (isActive ? styles.headerNavPageLinkActive : styles.headerNavPageLink)}>
                                     Ask a question
-                                </NavLink>
-                            </li>
-                            <li className={styles.headerNavLeftMargin}>
-                                <NavLink to="/sql" className={({ isActive }) => (isActive ? styles.headerNavPageLinkActive : styles.headerNavPageLink)}>
-                                    Sql NLP
                                 </NavLink>
                             </li>
                             { showSpeech && (
